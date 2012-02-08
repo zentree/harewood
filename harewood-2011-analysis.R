@@ -24,11 +24,12 @@ setwd('~/Documents/Research/2012/harewood/') # Change this for your machine
 #opp <- as.data.frame(opp)
 
 #### Reading Harewood opposite wood data ####
-opp <- read.csv('selected-samples.csv', header = FALSE, skip = 1)
-names(opp) <- Cs(col, row, wood.type, clone, status, dia.along, dia.across,
-                 gav, gmass, gvol, gld, gcurve, remarks, dav, dmass, dvol,
-                 dld, dcurve, moist, gden, dden, bden, gmoe, dmoe,
-                 lshr, vshr)
+opp <- read.csv('selected-samples-final.csv', header = FALSE, skip = 1)
+names(opp) <- Cs(col, row, wood.type, clone, status, harv.time, dia.along, 
+                 dia.across, gav, gmass, gvol, gld, gcurve, sample.length,
+                 time, fakopp.vel, remarks, dav, 
+                 dmass, dvol, dld, dcurve, moist, gden, dden, bden, gmoe, 
+                 dmoe, lshr, vshr, new.moe, new.moe.comments)
 head(opp)
 summary(opp)
 
@@ -48,63 +49,43 @@ names(code)[5] <- 'TENclone'
 #### Summary statistics and plots ####
 summary(opp)
 
-boxplot(dav ~ clone, data = opp)
-boxplot(lshr ~ clone, data = opp)
+boxplot(new.moe ~ clone, data = opp)
 
+# There are some outliers
+xyplot(lshr ~ new.moe, data = opp)
+opp <- subset(opp, new.moe > 2) # This drops a single observation
+with(opp, cor(lshr, new.moe, use = 'complete.obs'))
+# -0.41
 
-# This looks pretty bad. Likely explanation is that we have commingling
-# of compression and opposite wood due to too much leaning.
-xyplot(lshr ~ dav, data = opp)
-with(opp, cor(lshr, dav, use = 'complete.obs'))
-# -0.17
+# Sort out factors
+opp$rep <- factor(opp$rep)
+opp$clone <- factor(opp$clone)
+opp$harv.time <- factor(opp$harv.time)
 
-# Need to identify samples with commingling to drop here
-# use status variable
-opp.in <- subset(opp, status == 'IN')
-opp.in$clone <- factor(opp.in$clone)
-opp.in$rep <- factor(opp.in$rep)
- 
-xyplot(lshr ~ dav, data = opp.in)
-with(opp.in, cor(lshr, dav, use = 'complete.obs'))
-# -0.29
 
 #### Simple analysis for meeting in Auckland ####
 # Only 'good' trees
-dmoe.asr <- asreml(dmoe ~ 1, random = ~ rep + clone, data = opp.in)
-summary(dmoe.asr)
+moe.asr <- asreml(new.moe ~ harv.time, random = ~ rep + clone, data = opp)
+summary(moe.asr)
+
+# $loglik
+# [1] 110.2819
+# 
+# $varcomp
+#                      gamma   component   std.error    z.ratio constraint
+# rep!rep.var     0.01653934 0.003173325 0.003921593  0.8091928   Positive
+# clone!clone.var 0.95934730 0.184065425 0.062381329  2.9506493   Positive
+# R!variance      1.00000000 0.191865265 0.013248538 14.4819956   Positive
+
+# Heritability: 0.184065425/(0.184065425+0.003173325+0.191865265) = 0.486
 
 # Extracting genetic values
-dmoe.gv <- data.frame(coef(dmoe.asr, pattern = 'clone'))
-dmoe.gv$clone <- apply(data.frame(rownames(dmoe.gv)), 1, 
+moe.gv <- data.frame(coef(moe.asr, pattern = 'clone'))
+moe.gv$clone <- apply(data.frame(rownames(moe.gv)), 1, 
                          FUN = function(x) unlist(strsplit(x, '_'))[2])
 
-dmoe.gv <- merge(dmoe.gv, code[,c(1:2, 5),], by.x = 'clone', by.y = 'Harewood')
+moe.gv <- merge(moe.gv, code[,c(1:2, 5),], by.x = 'clone', by.y = 'Harewood')
 
-dmoe.gv[order(dmoe.gv$effect, decreasing = TRUE),]
+moe.gv[order(moe.gv$effect, decreasing = TRUE),]
 
-# All trees, 'good' and 'bdd'
-all <- opp
-all$clone <- factor(all$clone)
-all$rep <- factor(all$rep)
-
-dav.u2 <- asreml(dav ~ 1, random = ~ rep + clone, data = all)
-summary(dav.u2)
-
-dav.gv2 <- data.frame(coef(dav.u2, pattern = 'clone'))
-dav.gv2$clone <- apply(data.frame(rownames(dav.gv2)), 1, 
-                      FUN = function(x) unlist(strsplit(x, '_'))[2])
-
-dav.gv2 <- merge(dav.gv2, code[,c(1:2, 5),], by.x = 'clone', by.y = 'Harewood')
-
-dav.gv2[order(dav.gv$effect, decreasing = TRUE),]
-
-
-
-
-
-# Meanwhile let's go for simple univariate analyses
-# using lme4. Suffix .u stands for univariate
-gav.u <- lmer(gav ~ 1 + (1 | rep) + (1 | clone), data = opp)
-summary(gav.u)
-gav.uvc <- VarCorr(gav.u)
-gav.uh2 <- gav.uvc$clone[1]/(gav.uvc$clone[1] + gav.uvc$rep[1])
+save(moe.gv, file='newmoe-genetic-values.Rdata')
