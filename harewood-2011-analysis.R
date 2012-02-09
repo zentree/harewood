@@ -4,7 +4,7 @@
 # University of Canterbury
 
 # libraries
-require(lattice)
+require(ggplot2)
 require(Hmisc)
 require(asreml)
 
@@ -49,12 +49,10 @@ names(code)[5] <- 'TENclone'
 #### Summary statistics and plots ####
 summary(opp)
 
-boxplot(new.moe ~ clone, data = opp)
-
 # There are some outliers
-xyplot(lshr ~ new.moe, data = opp)
+qplot(new.moe, lshr, data = opp)
 opp <- subset(opp, new.moe > 2) # This drops a single observation
-xyplot(lshr ~ new.moe, data = opp)
+qplot(new.moe, lshr, data = opp)
 
 with(opp, cor(lshr, new.moe, use = 'complete.obs'))
 # -0.41
@@ -66,7 +64,6 @@ opp$harv.time <- factor(opp$harv.time)
 
 
 #### Simple analysis for meeting in Auckland ####
-# Only 'good' trees
 moe.asr <- asreml(new.moe ~ harv.time, random = ~ rep + clone, data = opp)
 summary(moe.asr)
 
@@ -98,7 +95,23 @@ moe.gv$clone <- apply(data.frame(rownames(moe.gv)), 1,
                          FUN = function(x) unlist(strsplit(x, '_'))[2])
 
 moe.gv <- merge(moe.gv, code[,c(1:2, 5),], by.x = 'clone', by.y = 'Harewood')
+moe.gv <- subset(moe.gv, !is.na(TENclone))
+moe.gv$effect <- moe.gv$effect + coef(moe.asr, pattern = 'Intercept')
+moe.gv$class <- factor(cut(moe.gv$effect, breaks = c(0, 4.35, 4.72, 6), 
+                       labels = c('bottom', 'middle', 'top')))
 
-moe.gv[order(moe.gv$effect, decreasing = TRUE),]
+moe.gv[order(-moe.gv$effect),]
+
+moe.plot <- ggplot(moe.gv, aes(x = 1, y = effect, colour = class, label = TENclone)) 
+moe.plot <- moe.plot + geom_text(size = 3) + scale_y_continuous('MoE (GPa)') +
+            scale_x_continuous('') + 
+            opts(axis.title.y = theme_text(size = 12, angle = 90),
+                 axis.text.y = theme_text(size = 10, colour = 'black'),
+                 axis.text.x = theme_text(colour = 'white'),
+                 legend.position = 'none')
+
+pdf('moe-ranking-plot.pdf', width = 2, height = 6)
+moe.plot
+dev.off()
 
 save(moe.gv, file='newmoe-genetic-values.Rdata')

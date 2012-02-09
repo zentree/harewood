@@ -13,10 +13,15 @@ clone10.gv$gvacross = with(clone10.gv, (goldgv + waitgv)/2)
 
 compare <- merge(moe.gv, clone10.gv, by.x = 'TENclone', by.y = 'clone')
 
+
 xyplot(gvacross ~ effect, data = compare)
-with(compare, cor(gvacross, effect))
+with(compare, cor(gvacross, effect, method = 'spearman'))
+# [1] -0.5285714
+
 
 xyplot(gvacross ~ effect, data = compare, 
        subset = !(TENclone %in% c('125', '126')))
 
-with(compare[!(compare$TENclone %in% c('125', '126')),], cor(gvacross, effect))
+with(compare[!(compare$TENclone %in% c('125', '126')),], 
+     cor(gvacross, effect, method='spearman'))
+# [1] -0.7582418
