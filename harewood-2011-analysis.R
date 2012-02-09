@@ -54,6 +54,8 @@ boxplot(new.moe ~ clone, data = opp)
 # There are some outliers
 xyplot(lshr ~ new.moe, data = opp)
 opp <- subset(opp, new.moe > 2) # This drops a single observation
+xyplot(lshr ~ new.moe, data = opp)
+
 with(opp, cor(lshr, new.moe, use = 'complete.obs'))
 # -0.41
 
@@ -67,6 +69,17 @@ opp$harv.time <- factor(opp$harv.time)
 # Only 'good' trees
 moe.asr <- asreml(new.moe ~ harv.time, random = ~ rep + clone, data = opp)
 summary(moe.asr)
+
+#### Crap! RUn out of ASReml license in uni desktop; I'll fit this with lme4
+# for today.
+require(lme4)
+moe.lme4 <- lmer(new.moe ~ harv.time + (1|rep) + (1|clone), data = opp)
+summary(moe.lme4)
+
+moe.gv <- data.frame(ranef(moe.lme4)$clone)
+moe.gv$clone <- rownames(moe.gv)
+names(moe.gv)[1] <- 'effect'
+#####
 
 # $loglik
 # [1] 110.2819
