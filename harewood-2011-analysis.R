@@ -102,15 +102,21 @@ moe.gv$class <- factor(cut(moe.gv$effect, breaks = c(0, 4.35, 4.72, 6),
 
 moe.gv[order(-moe.gv$effect),]
 
+# Color-blind-friendly palette
+# http://wiki.stdout.org/rcookbook/Graphs/Colors%20(ggplot2)/
+cbfPalette <- scale_colour_manual(values=c("#D55E00", "#000000", "#56B4E9"))
+
 moe.plot <- ggplot(moe.gv, aes(x = 1, y = effect, colour = class, label = TENclone)) 
 moe.plot <- moe.plot + geom_text(size = 3) + scale_y_continuous('MoE (GPa)') +
-            scale_x_continuous('') + 
+            scale_x_continuous('') + cbfPalette +
             opts(axis.title.y = theme_text(size = 12, angle = 90),
                  axis.text.y = theme_text(size = 10, colour = 'black'),
                  axis.text.x = theme_text(colour = 'white'),
                  legend.position = 'none')
 
-pdf('moe-ranking-plot.pdf', width = 2, height = 6)
+moe.plot
+
+pdf('moe-ranking-plot.pdf', width = 2, height = 7)
 moe.plot
 dev.off()
 
